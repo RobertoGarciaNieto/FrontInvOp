@@ -1,205 +1,131 @@
-// src/pages/OrdenesCompraPage.tsx
-
 import React, { useState } from 'react';
-import useOrdenesCompra from '../hooks/useOrdenesCompra'; // Ajusta la ruta
-import useProveedores from '../hooks/useProveedores'; // Para seleccionar proveedor
-import { OrdenCompraDTO, EstadoOrdenCompra, OrdenCompra } from '../types'; // Importa el DTO y el Enum
+import { MainLayout } from '../components/layout/MainLayout';
+import { OrdenCompraList } from '../components/ordenes-compra/OrdenCompraList';
+import OrdenCompraForm from '../components/ordenes-compra/OrdenCompraForm';
+import { ordenCompraService } from '../services/ordenCompraService';
+import { SuccessAlert, ConfirmationAlert } from '../components/ui/Alert';
 
-const OrdenesCompraPage: React.FC = () => {
-  const {
-    ordenesCompra,
-    loading,
-    error,
-    addOrdenCompra,
-    updateOrdenCompraData,
-    deleteOrdenCompraData,
-    changeOrdenCompraEstado,
-    refetchOrdenesCompra,
-  } = useOrdenesCompra();
+export const OrdenesCompraPage: React.FC = () => {
+  const [showForm, setShowForm] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [showSuccessAlert, setShowSuccessAlert] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [showConfirmAlert, setShowConfirmAlert] = useState(false);
+  const [confirmMessage, setConfirmMessage] = useState('');
+  const [confirmAction, setConfirmAction] = useState<(() => void) | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const { proveedores, loading: loadingProveedores, error: errorProveedores } = useProveedores();
-
-  const [newOrden, setNewOrden] = useState<OrdenCompraDTO>({
-    fechaOrdenCompra: new Date().toISOString().split('T')[0],
-    idProveedor: 0, // O el ID de un proveedor predeterminado
-  });
-  const [editingOrdenId, setEditingOrdenId] = useState<number | null>(null);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setNewOrden((prev) => ({
-      ...prev,
-      [name]: name === 'idProveedor' ? parseInt(value) : value,
-    }));
+  const handleSuccess = () => {
+    setShowForm(false);
+    setSuccessMessage('Orden de compra creada exitosamente');
+    setShowSuccessAlert(true);
+    setTimeout(() => setShowSuccessAlert(false), 3000);
+    setRefreshTrigger(prev => prev + 1);
   };
 
-  const handleAddSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (newOrden.idProveedor) {
-      const addedOrden = await addOrdenCompra(newOrden);
-      if (addedOrden) {
-        setNewOrden({
-          fechaOrdenCompra: new Date().toISOString().split('T')[0],
-          idProveedor: 0,
-        });
+  const handleConfirmar = async (id: number) => {
+    setConfirmMessage('¿Está seguro que desea confirmar esta orden de compra?');
+    setConfirmAction(() => async () => {
+      try {
+        await ordenCompraService.confirmarOrdenCompra(id);
+        setSuccessMessage('Orden de compra confirmada exitosamente');
+        setShowSuccessAlert(true);
+        setTimeout(() => setShowSuccessAlert(false), 3000);
+        setRefreshTrigger(prev => prev + 1);
+      } catch (err) {
+        console.error('❌ Error al confirmar orden:', err);
+        setError('Error al confirmar la orden de compra');
       }
-    } else {
-      alert('Por favor, selecciona un proveedor.');
-    }
-  };
-
-  const handleEditClick = (orden: OrdenCompra) => {
-    setEditingOrdenId(orden.id);
-    setNewOrden({
-      fechaOrdenCompra: orden.fechaOrdenCompra ? orden.fechaOrdenCompra.split('T')[0] : '',
-      idProveedor: orden.proveedor?.id || 0,
     });
+    setShowConfirmAlert(true);
   };
 
-  const handleUpdateSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (editingOrdenId !== null && newOrden.idProveedor) {
-      const updated = await updateOrdenCompraData(editingOrdenId, newOrden);
-      if (updated) {
-        setEditingOrdenId(null);
-        setNewOrden({
-          fechaOrdenCompra: new Date().toISOString().split('T')[0],
-          idProveedor: 0,
-        });
+  const handleCancelar = async (id: number) => {
+    setConfirmMessage('¿Está seguro que desea cancelar esta orden de compra?');
+    setConfirmAction(() => async () => {
+      try {
+        await ordenCompraService.cancelarOrdenCompra(id);
+        setSuccessMessage('Orden de compra cancelada exitosamente');
+        setShowSuccessAlert(true);
+        setTimeout(() => setShowSuccessAlert(false), 3000);
+        setRefreshTrigger(prev => prev + 1);
+      } catch (err) {
+        console.error('❌ Error al cancelar orden:', err);
+        setError('Error al cancelar la orden de compra');
       }
-    } else {
-      alert('Por favor, selecciona un proveedor.');
-    }
+    });
+    setShowConfirmAlert(true);
   };
 
-  const handleDeleteClick = async (id: number) => {
-    if (window.confirm('¿Estás seguro de que quieres eliminar esta orden de compra?')) {
-      await deleteOrdenCompraData(id);
-    }
+  const handleFinalizar = async (id: number) => {
+    setConfirmMessage('¿Está seguro que desea finalizar esta orden de compra?');
+    setConfirmAction(() => async () => {
+      try {
+        await ordenCompraService.finalizarOrdenCompra(id);
+        setSuccessMessage('Orden de compra finalizada exitosamente');
+        setShowSuccessAlert(true);
+        setTimeout(() => setShowSuccessAlert(false), 3000);
+        setRefreshTrigger(prev => prev + 1);
+      } catch (err) {
+        console.error('❌ Error al finalizar orden:', err);
+        setError('Error al finalizar la orden de compra');
+      }
+    });
+    setShowConfirmAlert(true);
   };
-
-  const handleChangeEstado = async (id: number, estado: string) => {
-    if (window.confirm(`¿Estás seguro de cambiar el estado a ${estado}?`)) {
-      await changeOrdenCompraEstado(id, estado as EstadoOrdenCompra);
-    }
-  };
-
-  if (loading || loadingProveedores) {
-    return <div style={{ textAlign: 'center', marginTop: '50px' }}>Cargando órdenes de compra y proveedores...</div>;
-  }
-
-  if (error || errorProveedores) {
-    return (
-      <div style={{ textAlign: 'center', marginTop: '50px', color: 'red' }}>
-        <h2>Error al cargar datos:</h2>
-        <p>{error || errorProveedores}</p>
-        <button onClick={refetchOrdenesCompra} style={{ padding: '10px 20px', cursor: 'pointer' }}>
-          Reintentar
-        </button>
-      </div>
-    );
-  }
 
   return (
-    <div style={{ padding: '20px', fontFamily: 'Arial, sans-serif' }}>
-      <h1>Gestión de Órdenes de Compra</h1>
-
-      {/* Formulario para Agregar/Editar Orden de Compra */}
-      <div style={{ marginBottom: '30px', border: '1px solid #ccc', padding: '20px', borderRadius: '8px' }}>
-        <h2>{editingOrdenId ? 'Editar Orden de Compra' : 'Crear Nueva Orden de Compra'}</h2>
-        <form onSubmit={editingOrdenId ? handleUpdateSubmit : handleAddSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-          <label>
-            Fecha Orden:
-            <input type="date" name="fechaOrdenCompra" value={newOrden.fechaOrdenCompra || ''} onChange={handleInputChange} required style={{ width: '100%', padding: '8px' }} />
-          </label>
-          <label>
-            Proveedor:
-            <select name="idProveedor" value={newOrden.idProveedor || ''} onChange={handleInputChange} required style={{ width: '100%', padding: '8px' }}>
-              <option value="">Seleccione un proveedor</option>
-              {proveedores.map((prov) => (
-                <option key={prov.id} value={prov.id}>
-                  {prov.nombreProveedor}
-                </option>
-              ))}
-            </select>
-          </label>
-          {/* Aquí podrías añadir campos para ArticuloOrdenCompra si se crean junto con la OC */}
-          <button type="submit" style={{ gridColumn: 'span 2', padding: '10px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
-            {editingOrdenId ? 'Actualizar Orden' : 'Crear Orden'}
+    <MainLayout>
+      <div className="container mx-auto px-4 py-8">
+        {showSuccessAlert && <SuccessAlert message={successMessage} />}
+        {showConfirmAlert && (
+          <ConfirmationAlert
+            message={confirmMessage}
+            onAccept={() => {
+              if (confirmAction) {
+                confirmAction();
+              }
+              setShowConfirmAlert(false);
+            }}
+            onDeny={() => setShowConfirmAlert(false)}
+          />
+        )}
+        {error && <div className="alert alert-error mb-4">{error}</div>}
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-white">Órdenes de Compra</h1>
+          <button 
+            onClick={() => setShowForm(true)} 
+            className="btn btn-soft btn-primary"
+          >
+            Nueva Orden de Compra
           </button>
-          {editingOrdenId && (
-            <button type="button" onClick={() => {
-              setEditingOrdenId(null);
-              setNewOrden({ fechaOrdenCompra: new Date().toISOString().split('T')[0], idProveedor: 0 });
-            }} style={{ gridColumn: 'span 2', padding: '10px', backgroundColor: '#f44336', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', marginTop: '10px' }}>
-              Cancelar Edición
-            </button>
-          )}
-        </form>
-      </div>
+        </div>
 
-      {/* Lista de Órdenes de Compra */}
-      <div style={{ marginTop: '30px' }}>
-        <h2>Órdenes de Compra ({ordenesCompra.length})</h2>
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '15px' }}>
-          <thead>
-            <tr style={{ backgroundColor: '#f2f2f2' }}>
-              <th style={tableHeaderStyle}>ID</th>
-              <th style={tableHeaderStyle}>Fecha</th>
-              <th style={tableHeaderStyle}>Proveedor</th>
-              <th style={tableHeaderStyle}>Estado</th>
-              <th style={tableHeaderStyle}>Acciones</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ordenesCompra.map((orden) => (
-              <tr key={orden.id} style={{ borderBottom: '1px solid #ddd' }}>
-                <td style={tableCellStyle}>{orden.id}</td>
-                <td style={tableCellStyle}>{new Date(orden.fechaOrdenCompra).toLocaleDateString()}</td>
-                <td style={tableCellStyle}>{orden.proveedor?.nombreProveedor || 'N/A'}</td>
-                <td style={tableCellStyle}>{orden.estado}</td>
-                <td style={tableCellStyle}>
-                  <button onClick={() => handleEditClick(orden)} style={actionButtonStyle}>Editar</button>
-                  <button onClick={() => handleDeleteClick(orden.id)} style={{ ...actionButtonStyle, backgroundColor: '#f44336' }}>Eliminar</button>
-                  <select
-                    value={orden.estado}
-                    onChange={(e) => handleChangeEstado(orden.id, e.target.value)}
-                    style={{ marginLeft: '10px', padding: '6px', borderRadius: '5px' }}
-                  >
-                    {Object.values(EstadoOrdenCompra).map((estado) => (
-                      <option key={estado} value={estado}>{estado}</option>
-                    ))}
-                  </select>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="grid grid-cols-1 gap-6">
+          <OrdenCompraList 
+            refreshTrigger={refreshTrigger}
+            onConfirmar={handleConfirmar}
+            onCancelar={handleCancelar}
+            onFinalizar={handleFinalizar}
+          />
+        </div>
+
+        {showForm && (
+          <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-gray-800 rounded-lg p-6 w-full max-w-2xl shadow-xl border border-gray-700">
+              <h2 className="text-2xl font-bold mb-6 text-white">
+                Nueva Orden de Compra
+              </h2>
+              <OrdenCompraForm
+                onSuccess={handleSuccess}
+                onCancel={() => {
+                  setShowForm(false);
+                }}
+              />
+            </div>
+          </div>
+        )}
       </div>
-    </div>
+    </MainLayout>
   );
-};
-
-const tableHeaderStyle: React.CSSProperties = {
-  padding: '12px',
-  textAlign: 'left',
-  borderBottom: '1px solid #ddd',
-};
-
-const tableCellStyle: React.CSSProperties = {
-  padding: '12px',
-  textAlign: 'left',
-  borderBottom: '1px solid #ddd',
-};
-
-const actionButtonStyle: React.CSSProperties = {
-  padding: '8px 12px',
-  marginRight: '8px',
-  borderRadius: '5px',
-  border: 'none',
-  cursor: 'pointer',
-  backgroundColor: '#008CBA',
-  color: 'white',
-};
-
-export default OrdenesCompraPage;
+}; 

@@ -1,54 +1,113 @@
-# React + TypeScript + Vite
+# Sistema de Gestión de Inventario - Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Este proyecto es el frontend de un sistema de gestión de inventario desarrollado con React, TypeScript y Tailwind CSS.
 
-Currently, two official plugins are available:
+## 🚀 Características
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Gestión de artículos
+- Gestión de proveedores
+- Gestión de pedidos de compra
+- Gestión de inventario
+- Reportes
+- Configuración del sistema
 
-## Expanding the ESLint configuration
+## 🛠️ Tecnologías Utilizadas
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- React 18
+- TypeScript
+- Tailwind CSS
+- Axios
+- React Router DOM
+- Lucide Icons
+- Shadcn/ui
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+## 📁 Estructura del Proyecto
+
+```
+src/
+├── api/              # Servicios y configuración de API
+├── components/       # Componentes reutilizables
+├── constants/        # Constantes y configuraciones
+├── hooks/           # Hooks personalizados
+├── pages/           # Páginas de la aplicación
+├── types/           # Definiciones de tipos TypeScript
+└── utils/           # Utilidades y funciones auxiliares
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 🎯 Componentes Principales
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Componentes de UI
+- `button`: Botón personalizado con variantes
+- `Card`: Tarjeta contenedora
+- `Modal`: Ventana modal
+- `DataTable`: Tabla de datos con paginación y ordenamiento
+- `Form`: Formulario con validación
+- `Alert`: Mensajes de alerta
+- `Badge`: Etiquetas de estado
+- `Tooltip`: Información al pasar el mouse
+- `Dropdown`: Menú desplegable
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
+### Componentes de Formulario
+- `Input`: Campo de texto
+- `Textarea`: Área de texto
+- `Select`: Selector desplegable
+- `Checkbox`: Casilla de verificación
+- `Radio`: Botón de opción
+- `Switch`: Interruptor
+- `DatePicker`: Selector de fecha
+- `TimePicker`: Selector de hora
+
+## 🔄 Hooks Personalizados
+
+- `useCrud`: Hook para operaciones CRUD
+- `useForm`: Hook para manejo de formularios
+
+## 📊 Páginas
+
+- `Home`: Dashboard principal
+- `ArticulosPage`: Gestión de artículos
+- `ProveedoresPage`: Gestión de proveedores
+- `PedidosPage`: Gestión de pedidos
+- `InventarioPage`: Gestión de inventario
+- `ReportesPage`: Reportes del sistema
+- `ConfiguracionPage`: Configuración
+
+## 🚀 Instalación
+
+1. Clonar el repositorio
+```bash
+git clone [url-del-repositorio]
 ```
+
+2. Instalar dependencias
+```bash
+npm install
+```
+
+3. Iniciar el servidor de desarrollo
+```bash
+npm run dev
+```
+
+## 🔧 Configuración
+
+El proyecto utiliza las siguientes variables de entorno:
+
+- `VITE_API_URL`: URL base de la API (por defecto: http://localhost:8080)
+
+## 📝 Notas
+
+- El proyecto está configurado para trabajar con el backend Spring Boot
+- Utiliza Tailwind CSS para los estilos
+- Implementa un diseño responsive
+- Incluye validación de formularios
+- Manejo de errores y estados de carga
+- Soporte para temas claro/oscuro
+
+## 🤝 Contribución
+
+1. Fork el proyecto
+2. Crear una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abrir un Pull Request
