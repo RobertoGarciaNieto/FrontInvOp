@@ -202,12 +202,10 @@ export const ProveedorArticulosList: React.FC<ProveedorArticulosListProps> = ({
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                     {articuloProveedor?.modeloInventario === "loteFijo" || articuloProveedor?.modeloInventario === ModeloInventario.loteFijo
                       ? articuloProveedor?.puntoPedido || 0
-                      : '-'}
+                      : articulos.find(a => a.idArticulo === articuloProveedor?.id_articulo)?.inventarioMaximo || 0}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
-                    {articuloProveedor?.modeloInventario === "loteFijo" || articuloProveedor?.modeloInventario === ModeloInventario.loteFijo
-                      ? `$${articuloProveedor?.costoPorPedido?.toFixed(2) || '0.00'}`
-                      : '-'}
+                    {`$${articuloProveedor?.costoPorPedido?.toFixed(2) || '0.00'}`}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
                     <button

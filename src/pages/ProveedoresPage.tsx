@@ -3,9 +3,13 @@ import { ProveedorDTO } from '../types';
 import { proveedorService } from '../services/proveedorService';
 import { MainLayout } from '../components/layout/MainLayout';
 import { ProveedorForm } from '../components/proveedores/ProveedorForm';
-import { ProveedorList } from '../components/proveedores/ProveedorList';
 import { ProveedorArticulosList } from '../components/proveedores/ProveedorArticulosList';
 import { SuccessAlert, ConfirmationAlert } from '../components/ui/Alert';
+import { PaginatedTable } from '../components/ui/PaginatedTable';
+import { Edit2, Trash2, Package, Plus } from 'lucide-react';
+import { articuloProveedorService } from '../services/articuloProveedorService';
+
+type ProveedorCreateData = Omit<ProveedorDTO, 'id'>;
 
 export const ProveedoresPage: React.FC = () => {
   const [proveedores, setProveedores] = useState<ProveedorDTO[]>([]);
@@ -19,6 +23,9 @@ export const ProveedoresPage: React.FC = () => {
   const [showConfirmAlert, setShowConfirmAlert] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState('');
   const [confirmAction, setConfirmAction] = useState<(() => void) | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [articulosPorProveedor, setArticulosPorProveedor] = useState<{ [key: number]: any[] }>({});
+  const itemsPerPage = 10;
 
   useEffect(() => {
     cargarDatos();
@@ -38,7 +45,30 @@ export const ProveedoresPage: React.FC = () => {
     }
   };
 
-  const handleCreateProveedor = async (proveedor: ProveedorDTO) => {
+  // Cargar artículos por proveedor
+  useEffect(() => {
+    const cargarArticulosPorProveedor = async () => {
+      const articulosMap: { [key: number]: any[] } = {};
+      
+      for (const proveedor of proveedores) {
+        try {
+          const articulos = await articuloProveedorService.listadoArticulosPorProveedor(proveedor.id);
+          articulosMap[proveedor.id] = articulos;
+        } catch (error) {
+          console.error(`Error al cargar artículos para el proveedor ${proveedor.id}:`, error);
+          articulosMap[proveedor.id] = [];
+        }
+      }
+      
+      setArticulosPorProveedor(articulosMap);
+    };
+
+    if (proveedores.length > 0) {
+      cargarArticulosPorProveedor();
+    }
+  }, [proveedores]);
+
+  const handleCreateProveedor = async (proveedor: ProveedorCreateData) => {
     try {
       const proveedorCreado = await proveedorService.altaProveedor(proveedor);
       setProveedores(prev => [...prev, proveedorCreado]);
@@ -53,10 +83,16 @@ export const ProveedoresPage: React.FC = () => {
     }
   };
 
-  const handleEditProveedor = async (proveedor: ProveedorDTO) => {
+  const handleEditProveedor = async (proveedor: ProveedorCreateData) => {
+    if (!selectedProveedor) return;
+    
     try {
-      const proveedorActualizado = await proveedorService.modificarProveedor(proveedor.id, proveedor);
-      setProveedores(prev => prev.map(p => p.id === proveedor.id ? proveedorActualizado : p));
+      const proveedorToUpdate: ProveedorDTO = {
+        ...proveedor,
+        id: selectedProveedor.id
+      };
+      const proveedorActualizado = await proveedorService.modificarProveedor(selectedProveedor.id, proveedorToUpdate);
+      setProveedores(prev => prev.map(p => p.id === selectedProveedor.id ? proveedorActualizado : p));
       setShowForm(false);
       setSelectedProveedor(null);
       setIsEditing(false);
@@ -104,6 +140,67 @@ export const ProveedoresPage: React.FC = () => {
     setSelectedProveedor(proveedor);
   };
 
+  // Lógica de paginación
+  const totalPages = Math.ceil(proveedores.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const sortedProveedores = [...proveedores].sort((a, b) => a.nombreProveedor.localeCompare(b.nombreProveedor));
+  const paginatedData = sortedProveedores.slice(startIndex, startIndex + itemsPerPage);
+
+  // Columnas para la tabla paginada
+  const columns = [
+    {
+      header: 'Nombre',
+      accessor: (item: ProveedorDTO) => (
+        <div className="text-sm font-medium text-gray-300">
+          {item.nombreProveedor}
+        </div>
+      ),
+    },
+    {
+      header: 'CUIT',
+      accessor: (item: ProveedorDTO) => (
+        <div className="text-sm text-gray-300">{item.cuit}</div>
+      ),
+    },
+    {
+      header: 'Artículos',
+      accessor: (item: ProveedorDTO) => (
+        <div className="flex items-center text-sm text-gray-300">
+          <Package className="h-4 w-4 mr-1" />
+          {articulosPorProveedor[item.id]?.length || 0} artículos asociados
+        </div>
+      ),
+    },
+    {
+      header: 'Acciones',
+      accessor: (item: ProveedorDTO) => (
+        <div className="flex justify-end space-x-2">
+          <button
+            onClick={() => handleEdit(item)}
+            className="text-blue-400 hover:text-blue-300 focus:outline-none focus:underline"
+            title="Editar proveedor"
+          >
+            <Edit2 className="h-5 w-5" />
+          </button>
+          <button
+            onClick={() => handleVerArticulos(item)}
+            className="text-green-400 hover:text-green-300 focus:outline-none focus:underline"
+            title="Ver artículos"
+          >
+            <Plus className="h-5 w-5" />
+          </button>
+          <button
+            onClick={() => handleDeleteProveedor(item.id)}
+            className="text-red-400 hover:text-red-300 focus:outline-none focus:underline"
+            title="Eliminar proveedor"
+          >
+            <Trash2 className="h-5 w-5" />
+          </button>
+        </div>
+      ),
+    }
+  ];
+
   if (loading) return <div className="flex justify-center items-center min-h-screen"><span className="loading loading-ring loading-xl"></span></div>;
 
   return (
@@ -137,11 +234,12 @@ export const ProveedoresPage: React.FC = () => {
           {/* Sección de Todos los Proveedores */}
           <div className="bg-gray-800 rounded-lg p-6">
             <h2 className="text-xl font-semibold text-white mb-4">Todos los Proveedores</h2>
-            <ProveedorList
-              proveedores={proveedores}
-              onEdit={handleEdit}
-              onDelete={handleDeleteProveedor}
-              onAddArticulo={handleVerArticulos}
+            <PaginatedTable
+              columns={columns}
+              data={paginatedData}
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
             />
           </div>
 

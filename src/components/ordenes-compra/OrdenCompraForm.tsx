@@ -19,6 +19,10 @@ const OrdenCompraForm: React.FC<OrdenCompraFormProps> = ({ orden, onSuccess, onC
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warnings, setWarnings] = useState<string[]>([]);
+  
+  // Estado para paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   useEffect(() => {
     const cargarDatos = async () => {
@@ -51,6 +55,16 @@ const OrdenCompraForm: React.FC<OrdenCompraFormProps> = ({ orden, onSuccess, onC
     cargarDatos();
   }, [orden]);
 
+  // Funciones de paginación
+  const totalPages = Math.ceil(articulos.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentArticulos = articulos.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
   const handleArticuloChange = async (articuloId: number, checked: boolean) => {
     if (checked) {
       try {
@@ -75,9 +89,22 @@ const OrdenCompraForm: React.FC<OrdenCompraFormProps> = ({ orden, onSuccess, onC
           }
         }
 
+        // Calcular cantidad estimada basada en el punto de pedido o inventario máximo
+        let cantidadEstimada = 0;
+        if (articulo.stockActual < articulo.inventarioMaximo) {
+          // Calcular cantidad para llegar al inventario máximo
+          cantidadEstimada = articulo.inventarioMaximo - articulo.stockActual;
+        }
+
+        // Verificar si el stock actual ya está en el inventario máximo
+        if (cantidadEstimada <= 0) {
+          setWarnings(prev => [...prev, `El artículo ${articulo.nombreArticulo} ya está en su inventario máximo (${articulo.inventarioMaximo}). No se puede generar una orden de compra.`]);
+          return;
+        }
+
         // Si no hay orden activa, agregar el artículo con su proveedor predeterminado
         setSelectedProveedor(articulo.idProveedorPredeterminado);
-        setSelectedArticulos(prev => [...prev, { id: articuloId, cantidad: 1 }]);
+        setSelectedArticulos(prev => [...prev, { id: articuloId, cantidad: cantidadEstimada }]);
       } catch (err) {
         console.error('Error al verificar órdenes activas:', err);
         setError('Error al verificar órdenes activas');
@@ -95,6 +122,26 @@ const OrdenCompraForm: React.FC<OrdenCompraFormProps> = ({ orden, onSuccess, onC
       return;
     }
 
+    // Validación adicional: Verificar que los artículos seleccionados no excedan el inventario máximo
+    const articulosConProblemas = selectedArticulos.filter(selected => {
+      const articulo = articulos.find(a => a.idArticulo === selected.id);
+      if (!articulo) return false;
+      
+      // Verificar que la cantidad no exceda el inventario máximo
+      const stockResultante = articulo.stockActual + selected.cantidad;
+      return stockResultante > articulo.inventarioMaximo;
+    });
+
+    if (articulosConProblemas.length > 0) {
+      const nombresArticulos = articulosConProblemas.map(selected => {
+        const articulo = articulos.find(a => a.idArticulo === selected.id);
+        const stockResultante = articulo ? articulo.stockActual + selected.cantidad : 0;
+        return `${articulo?.nombreArticulo || 'Artículo desconocido'} (stock resultante: ${stockResultante}, máximo: ${articulo?.inventarioMaximo})`;
+      });
+      setError(`No se puede generar la orden de compra para los siguientes artículos que excederían su inventario máximo: ${nombresArticulos.join(', ')}`);
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
@@ -105,7 +152,7 @@ const OrdenCompraForm: React.FC<OrdenCompraFormProps> = ({ orden, onSuccess, onC
         estado: "Pendiente",
         articulosOrdenCompra: selectedArticulos.map(a => ({
           id_articulo: a.id,
-          cantidad: 1 // La cantidad será calculada por el backend
+          cantidad: a.cantidad // Usar la cantidad calculada
         }))
       };
 
@@ -155,25 +202,66 @@ const OrdenCompraForm: React.FC<OrdenCompraFormProps> = ({ orden, onSuccess, onC
           <span className="label-text">Artículos</span>
         </label>
         <div className="space-y-4">
-          {articulos.map(articulo => (
-            <div key={articulo.idArticulo} className="flex items-center gap-4">
-              <label className="label cursor-pointer">
-                <input
-                  type="checkbox"
-                  className="checkbox checkbox-primary"
-                  checked={selectedArticulos.some(a => a.id === articulo.idArticulo)}
-                  onChange={(e) => handleArticuloChange(articulo.idArticulo, e.target.checked)}
-                />
-                <span className="label-text ml-2">{articulo.nombreArticulo}</span>
-              </label>
-              {selectedArticulos.some(a => a.id === articulo.idArticulo) && (
-                <span className="text-sm text-gray-400">
-                  Cantidad calculada automáticamente
-                </span>
-              )}
+          {currentArticulos.map(articulo => (
+            <div key={articulo.idArticulo}>
+              <button
+                type="button"
+                className={`w-full text-left p-4 rounded-lg border transition-colors ${
+                  selectedArticulos.some(a => a.id === articulo.idArticulo)
+                    ? 'bg-primary/10 border-primary ring-2 ring-primary'
+                    : 'border-gray-700 hover:bg-gray-800'
+                }`}
+                onClick={() => {
+                  const isSelected = selectedArticulos.some(a => a.id === articulo.idArticulo);
+                  handleArticuloChange(articulo.idArticulo, !isSelected);
+                }}
+              >
+                <div className="flex justify-between items-center">
+                  <span className="font-semibold text-lg">{articulo.nombreArticulo}</span>
+                  <div className="text-sm text-right text-gray-400">
+                    <div>Stock actual: {articulo.stockActual}</div>
+                    <div>Inventario máximo: {articulo.inventarioMaximo}</div>
+                    <div className="font-semibold">Espacio disponible: {articulo.inventarioMaximo - articulo.stockActual}</div>
+                  </div>
+                </div>
+              </button>
             </div>
           ))}
         </div>
+        
+        {/* Controles de paginación */}
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between mt-6 px-4 py-3 border-t border-border bg-muted/50 rounded-lg">
+            <div className="text-sm text-muted-foreground">
+              Mostrando {startIndex + 1} a {Math.min(endIndex, articulos.length)} de {articulos.length} artículos
+            </div>
+            <div className="flex items-center space-x-2">
+              <button
+                type="button"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-3 py-1 rounded-md border border-border bg-background text-foreground 
+                  hover:bg-accent hover:text-accent-foreground transition-colors duration-200
+                  disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-background text-sm"
+              >
+                Anterior
+              </button>
+              <span className="px-3 py-1 text-sm text-muted-foreground">
+                Página {currentPage} de {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 rounded-md border border-border bg-background text-foreground 
+                  hover:bg-accent hover:text-accent-foreground transition-colors duration-200
+                  disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-background text-sm"
+              >
+                Siguiente
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex justify-end gap-4">

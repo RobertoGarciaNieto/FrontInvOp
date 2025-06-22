@@ -86,7 +86,7 @@ export interface Proveedor extends Base {
 export interface Venta extends Base {
   fechaVenta: Date;
   costoTotal: number;
-  articulosVenta: ArticuloVenta[];
+  articuloVenta: ArticuloVenta[];
 }
 
 //DTOs

@@ -7,9 +7,10 @@ interface VentaListProps {
   ventas: Venta[];
   onEdit: (venta: Venta) => void;
   onDelete: (venta: Venta) => void;
+  onDetail?: (venta: Venta) => void;
 }
 
-const VentaList: React.FC<VentaListProps> = ({ ventas, onEdit, onDelete }) => {
+const VentaList: React.FC<VentaListProps> = ({ ventas, onEdit, onDelete, onDetail }) => {
   const columns = [
     {
       header: 'ID',
@@ -27,13 +28,14 @@ const VentaList: React.FC<VentaListProps> = ({ ventas, onEdit, onDelete }) => {
     },
     {
       header: 'Estado',
-      accessor: (item: Venta) => (
+      accessor: 'estado',
+      cell: (value: boolean) => (
         <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-          item.estado 
+          value 
             ? 'bg-green-100 text-green-800' 
             : 'bg-red-100 text-red-800'
         }`}>
-          {item.estado ? 'Activa' : 'Inactiva'}
+          {value ? 'Activa' : 'Inactiva'}
         </span>
       ),
     },
@@ -42,6 +44,12 @@ const VentaList: React.FC<VentaListProps> = ({ ventas, onEdit, onDelete }) => {
       accessor: 'id',
       cell: (value: number) => (
         <div className="flex space-x-2">
+          <button
+            onClick={() => onDetail?.(ventas.find(v => v.id === value) as Venta)}
+            className="btn btn-soft btn-primary"
+          >
+            Detalle
+          </button>
           <button
             onClick={() => onEdit(ventas.find(v => v.id === value) as Venta)}
             className="btn btn-soft btn-info"

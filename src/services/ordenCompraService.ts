@@ -1,5 +1,6 @@
 import { api } from "./api";
-import { OrdenCompra, OrdenCompraDTO, EstadoOrdenCompra } from "../types";
+import { OrdenCompra, OrdenCompraDTO, EstadoOrdenCompra, ArticuloDTO } from "../types";
+import { articuloService } from "./articuloService";
 
 export const ordenCompraService = {
   getAll: async (): Promise<OrdenCompraDTO[]> => {
@@ -22,6 +23,34 @@ export const ordenCompraService = {
     }
   },
 
+  // Método para validar inventario máximo antes de crear la orden
+  validarInventarioMaximo: async (articulosOrdenCompra: { id_articulo: number; cantidad: number }[]): Promise<{ valido: boolean; errores: string[] }> => {
+    try {
+      const errores: string[] = [];
+      
+      for (const articuloOrden of articulosOrdenCompra) {
+        const articulo = await articuloService.getById(articuloOrden.id_articulo);
+        const stockResultante = articulo.stockActual + articuloOrden.cantidad;
+        
+        if (stockResultante > articulo.inventarioMaximo) {
+          errores.push(
+            `El artículo "${articulo.nombreArticulo}" excedería su inventario máximo. ` +
+            `Stock actual: ${articulo.stockActual}, Cantidad a pedir: ${articuloOrden.cantidad}, ` +
+            `Stock resultante: ${stockResultante}, Inventario máximo: ${articulo.inventarioMaximo}`
+          );
+        }
+      }
+      
+      return {
+        valido: errores.length === 0,
+        errores
+      };
+    } catch (error) {
+      console.error("Error al validar inventario máximo:", error);
+      throw new Error("Error al validar inventario máximo");
+    }
+  },
+
   altaOrdenCompra: async (
     ordenCompraDTO: OrdenCompraDTO
   ): Promise<OrdenCompra> => {
@@ -34,6 +63,12 @@ export const ordenCompraService = {
         throw new Error(
           "El DTO de orden de compra debe incluir un proveedor y al menos un artículo"
         );
+      }
+
+      // Validar inventario máximo antes de enviar al backend
+      const validacion = await ordenCompraService.validarInventarioMaximo(ordenCompraDTO.articulosOrdenCompra);
+      if (!validacion.valido) {
+        throw new Error(`No se puede crear la orden de compra:\n${validacion.errores.join('\n')}`);
       }
 
       const response = await api.post<OrdenCompra>(
@@ -69,6 +104,12 @@ export const ordenCompraService = {
       if (ordenActual.estadoOrdenCompra !== EstadoOrdenCompra.Pendiente) {
         console.error( "La orden no está en estado Pendiente:", ordenActual.estadoOrdenCompra);
         throw new Error("Solo se pueden modificar órdenes en estado Pendiente");
+      }
+
+      // Validar inventario máximo antes de enviar al backend
+      const validacion = await ordenCompraService.validarInventarioMaximo(ordenCompraDTO.articulosOrdenCompra);
+      if (!validacion.valido) {
+        throw new Error(`No se puede modificar la orden de compra:\n${validacion.errores.join('\n')}`);
       }
 
       const response = await api.put<OrdenCompra>(

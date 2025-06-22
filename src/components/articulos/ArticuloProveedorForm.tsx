@@ -45,7 +45,7 @@ export const ArticuloProveedorForm = ({
       idArticuloProveedor: 0,
       precioUnitario: 0,
       demoraEntrega: 0,
-      desviacionEstandar: 1.64,
+      desviacionEstandar: 0,
       costoPorPedido: 0,
       costoPedido: 0,
       modeloInventario: ModeloInventario.loteFijo,
@@ -144,12 +144,6 @@ export const ArticuloProveedorForm = ({
         newErrors.intervaloRevision = "El intervalo de revisión debe ser mayor a 0";
       }
     }
-    if (formData.costoAlmacenamiento <= 0) {
-      newErrors.costoAlmacenamiento = "El costo de almacenamiento debe ser mayor a 0";
-    }
-    if (formData.costoCompra <= 0) {
-      newErrors.costoCompra = "El costo de compra debe ser mayor a 0";
-    }
 
     setErrors(newErrors);
     if (Object.keys(newErrors).length > 0) {
@@ -197,14 +191,14 @@ export const ArticuloProveedorForm = ({
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
     const { name, value, type } = e.target;
-    
     setFormData(prev => ({
       ...prev,
-      [name]: name === "modeloInventario" 
-        ? (value === "loteFijo" ? ModeloInventario.loteFijo : ModeloInventario.intervaloFijo)
-        : type === "number"
-        ? Number(value)
-        : value,
+      [name]:
+        name === "modeloInventario"
+          ? Number(value)
+          : type === "number"
+          ? Number(value)
+          : value,
     }));
   };
 
@@ -346,24 +340,7 @@ export const ArticuloProveedorForm = ({
 
       {formData.modeloInventario === ModeloInventario.loteFijo ? (
         <div>
-          <label
-            htmlFor="puntoPedido"
-            className="block text-sm font-medium text-gray-300"
-          >
-            Punto de Pedido
-          </label>
-          <input
-            type="number"
-            id="puntoPedido"
-            name="puntoPedido"
-            value={formData.puntoPedido}
-            onChange={handleChange}
-            min="0"
-            className="mt-1 block w-full rounded-md bg-gray-700 border-gray-600 text-white shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          />
-          {errors.puntoPedido && (
-            <p className="mt-1 text-sm text-red-400">{errors.puntoPedido}</p>
-          )}
+          {/* Campo de Punto de Pedido eliminado - se calcula en el backend */}
         </div>
       ) : (
         <div>

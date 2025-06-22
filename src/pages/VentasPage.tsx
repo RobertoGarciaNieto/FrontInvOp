@@ -3,6 +3,7 @@ import { MainLayout } from '../components/layout/MainLayout';
 import { Venta } from '../types';
 import { PaginatedTable } from '../components/ui/PaginatedTable';
 import VentaForm from '../components/ventas/VentaForm';
+import VentaDetalleModal from '../components/ventas/VentaDetalleModal';
 import { ventaService } from '../services/ventaService';
 import { formatCurrency } from '../lib/utils';
 import { SuccessAlert, ConfirmationAlert } from '../components/ui/Alert';
@@ -18,6 +19,8 @@ export const VentasPage: React.FC = () => {
   const [showConfirmAlert, setShowConfirmAlert] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState('');
   const [confirmAction, setConfirmAction] = useState<(() => void) | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedVenta, setSelectedVenta] = useState<Venta | null>(null);
   const itemsPerPage = 10;
 
   const cargarDatos = async () => {
@@ -46,9 +49,24 @@ export const VentasPage: React.FC = () => {
     setShowForm(false);
   };
 
+  const handleDetail = async (venta: Venta) => {
+    try {
+      // Obtener los datos completos de la venta incluyendo los artículos
+      const ventaCompleta = await ventaService.getById(venta.id);
+      setSelectedVenta(ventaCompleta);
+      setShowDetailModal(true);
+    } catch (error) {
+      console.error('Error al obtener detalles de la venta:', error);
+      // Si falla, mostrar la venta básica sin artículos
+      setSelectedVenta(venta);
+      setShowDetailModal(true);
+    }
+  };
+
   const totalPages = Math.ceil(ventas.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
-  const paginatedData = ventas.slice(startIndex, startIndex + itemsPerPage);
+  const sortedVentas = [...ventas].sort((a, b) => new Date(b.fechaVenta).getTime() - new Date(a.fechaVenta).getTime());
+  const paginatedData = sortedVentas.slice(startIndex, startIndex + itemsPerPage);
 
   const columns = [
     {
@@ -69,6 +87,19 @@ export const VentasPage: React.FC = () => {
         }`}>
           {item.estado ? 'Activa' : 'Inactiva'}
         </span>
+      ),
+    },
+    {
+      header: 'Acciones',
+      accessor: (item: Venta) => (
+        <div className="flex space-x-2">
+          <button
+            onClick={() => handleDetail(item)}
+            className="btn btn-soft btn-primary"
+          >
+            Detalle
+          </button>
+        </div>
       ),
     }
   ];
@@ -130,6 +161,15 @@ export const VentasPage: React.FC = () => {
             </div>
           </div>
         )}
+
+        <VentaDetalleModal
+          venta={selectedVenta}
+          isOpen={showDetailModal}
+          onClose={() => {
+            setShowDetailModal(false);
+            setSelectedVenta(null);
+          }}
+        />
       </div>
     </MainLayout>
   );

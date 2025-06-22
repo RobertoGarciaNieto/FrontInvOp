@@ -32,7 +32,7 @@ export const proveedorService = {
     }
   },
 
-  altaProveedor: async (proveedorDTO: ProveedorDTO): Promise<ProveedorDTO> => {
+  altaProveedor: async (proveedorDTO: Omit<ProveedorDTO, 'id'>): Promise<ProveedorDTO> => {
     try {
       const response = await proveedoresApi.altaProveedor(proveedorDTO);
       return response.data;

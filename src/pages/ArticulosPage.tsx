@@ -5,12 +5,13 @@ import { proveedorService } from '../services/proveedorService';
 import { ordenCompraService } from '../services/ordenCompraService';
 import { MainLayout } from '../components/layout/MainLayout';
 import ArticuloForm from '../components/articulos/ArticuloForm';
-import { ArticuloList } from '../components/articulos/ArticuloList';
 import { ArticuloDetalleModal } from '../components/articulos/ArticuloDetalleModal';
 import { ProveedorSelectDialog } from '../components/articulos/ProveedorSelectDialog';
 import { ArticuloProveedorForm } from '../components/articulos/ArticuloProveedorForm';
 import { articuloProveedorService } from '../services/articuloProveedorService';
 import { SuccessAlert, ConfirmationAlert } from '../components/ui/Alert';
+import { PaginatedTable } from '../components/ui/PaginatedTable';
+import { formatCurrency } from '../lib/utils';
 
 export const ArticulosPage: React.FC = () => {
   const [articulos, setArticulos] = useState<ArticuloDTO[]>([]);
@@ -29,6 +30,8 @@ export const ArticulosPage: React.FC = () => {
   const [showConfirmAlert, setShowConfirmAlert] = useState(false);
   const [confirmMessage, setConfirmMessage] = useState('');
   const [confirmAction, setConfirmAction] = useState<(() => void) | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   useEffect(() => {
     cargarDatos();
@@ -169,11 +172,19 @@ export const ArticulosPage: React.FC = () => {
         return;
       }
 
+      // Validación: Verificar que el stock resultante no exceda el inventario máximo
+      const stockResultante = articulo.stockActual + cantidad;
+      if ('inventarioMaximo' in articulo && stockResultante > articulo.inventarioMaximo) {
+        setError(`No se puede generar la orden de compra para el artículo "${articulo.nombreArticulo}". El stock resultante (${stockResultante}) excedería el inventario máximo (${articulo.inventarioMaximo}).`);
+        return;
+      }
+
       setConfirmMessage(
         `¿Está seguro que desea generar una orden de compra para el artículo "${articulo.nombreArticulo}"?\n\n` +
         `Proveedor: ${articulo.nombreProveedor}\n` +
         `Cantidad a pedir: ${cantidad}\n` +
-        `Stock actual: ${articulo.stockActual}`
+        `Stock actual: ${articulo.stockActual}\n` +
+        `Stock resultante: ${stockResultante}`
       );
 
       setConfirmAction(() => async () => {
@@ -199,6 +210,79 @@ export const ArticulosPage: React.FC = () => {
       setError('Error al generar la orden de compra');
     }
   };
+
+  // Lógica de paginación
+  const totalPages = Math.ceil(articulos.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const sortedArticulos = [...articulos].sort((a, b) => a.nombreArticulo.localeCompare(b.nombreArticulo));
+  const paginatedData = sortedArticulos.slice(startIndex, startIndex + itemsPerPage);
+
+  // Función para obtener el proveedor predeterminado
+  const getProveedorPredeterminado = (articuloId: number) => {
+    const articulo = articulos.find(a => a.idArticulo === articuloId);
+    if (!articulo?.idProveedorPredeterminado) return 'Sin proveedor';
+    
+    const proveedor = proveedores.find(p => p.id === articulo.idProveedorPredeterminado);
+    return proveedor?.nombreProveedor || 'Sin proveedor';
+  };
+
+  // Columnas para la tabla paginada
+  const columns = [
+    {
+      header: 'Nombre',
+      accessor: (item: ArticuloDTO) => item.nombreArticulo,
+    },
+    {
+      header: 'Descripción',
+      accessor: (item: ArticuloDTO) => item.descripcionArticulo,
+    },
+    {
+      header: 'Precio de Venta',
+      accessor: (item: ArticuloDTO) => formatCurrency(item.precioVentaArt),
+    },
+    {
+      header: 'Stock Actual',
+      accessor: (item: ArticuloDTO) => (
+        <span className={item.stockActual <= 0 ? 'text-red-500' : 'text-green-500'}>
+          {item.stockActual}
+        </span>
+      ),
+    },
+    {
+      header: 'Demanda',
+      accessor: (item: ArticuloDTO) => item.demandaArticulo,
+    },
+    {
+      header: 'Proveedor Predeterminado',
+      accessor: (item: ArticuloDTO) => getProveedorPredeterminado(item.idArticulo),
+    },
+    {
+      header: 'Acciones',
+      accessor: (item: ArticuloDTO) => (
+        <div className="flex space-x-2">
+          <button
+            onClick={() => handleVerMas(item)}
+            className="btn btn-soft btn-info btn-sm"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
+            Ver más
+          </button>
+          <button
+            onClick={() => handleAsignarProveedor(item)}
+            className="btn btn-soft btn-warning btn-sm"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            Asignar Prov.
+          </button>
+        </div>
+      ),
+    }
+  ];
 
   if (loading) return <div className="flex justify-center items-center min-h-screen"><span className="loading loading-ring loading-xl"></span></div>;
 
@@ -233,10 +317,12 @@ export const ArticulosPage: React.FC = () => {
           {/* Sección de Todos los Artículos */}
           <div className="bg-gray-800 rounded-lg p-6">
             <h2 className="text-xl font-semibold text-white mb-4">Todos los Artículos</h2>
-            <ArticuloList
-              articulos={articulos}
-              onVerMas={handleVerMas}
-              onAsignarProveedor={handleAsignarProveedor}
+            <PaginatedTable
+              columns={columns}
+              data={paginatedData}
+              totalPages={totalPages}
+              currentPage={currentPage}
+              onPageChange={(page) => setCurrentPage(page)}
             />
           </div>
 

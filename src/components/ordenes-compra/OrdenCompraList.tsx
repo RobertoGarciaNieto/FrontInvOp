@@ -3,6 +3,7 @@ import { OrdenCompraDTO, EstadoOrdenCompra } from '../../types';
 import { ordenCompraService } from '../../services/ordenCompraService';
 import { PaginatedTable } from '../ui/PaginatedTable';
 import { formatCurrency } from '../../lib/utils';
+import { OrdenCompraEditModal } from './OrdenCompraEditModal';
 
 interface OrdenCompraListProps {
   refreshTrigger: number;
@@ -30,6 +31,8 @@ export const OrdenCompraList: React.FC<OrdenCompraListProps> = ({
   const itemsPerPage = 10;
   const [selectedOrden, setSelectedOrden] = useState<OrdenCompraDTO | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [ordenToEdit, setOrdenToEdit] = useState<OrdenCompraDTO | null>(null);
 
   useEffect(() => {
     cargarOrdenes();
@@ -95,6 +98,15 @@ export const OrdenCompraList: React.FC<OrdenCompraListProps> = ({
     setShowModal(true);
   };
 
+  const handleEditar = (orden: OrdenCompraDTO) => {
+    setOrdenToEdit(orden);
+    setShowEditModal(true);
+  };
+
+  const handleEditSave = () => {
+    cargarOrdenes(); // Recargar la lista después de editar
+  };
+
   const totalPages = Math.ceil(ordenes.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedData = ordenes.slice(startIndex, startIndex + itemsPerPage);
@@ -146,6 +158,15 @@ export const OrdenCompraList: React.FC<OrdenCompraListProps> = ({
           </button>
           {row.estado === EstadoOrdenCompra.Pendiente && (
             <>
+              <button
+                onClick={() => handleEditar(row)}
+                className="btn btn-soft btn-warning btn-sm"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+                Editar
+              </button>
               <button
                 onClick={() => handleConfirmar(value)}
                 className="btn btn-soft btn-success btn-sm"
@@ -307,6 +328,19 @@ export const OrdenCompraList: React.FC<OrdenCompraListProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal de Edición */}
+      {showEditModal && ordenToEdit && (
+        <OrdenCompraEditModal
+          orden={ordenToEdit}
+          isOpen={showEditModal}
+          onClose={() => {
+            setShowEditModal(false);
+            setOrdenToEdit(null);
+          }}
+          onSave={handleEditSave}
+        />
       )}
     </div>
   );
